@@ -44,7 +44,6 @@
     app.toggleAddDialog(true);
   });
 
-//選択した都市をローカル ストレージに保存
   document.getElementById('butAddCity').addEventListener('click', function() {
     // Add the newly selected city
     var select = document.getElementById('selectCityToAdd');
@@ -170,7 +169,24 @@
     var url = 'https://query.yahooapis.com/v1/public/yql?format=json&q=' +
         statement;
     // TODO add cache logic here
-
+    if ('caches' in window) {
+      /*
+       * Check if the service worker has already cached this city's weather
+       * data. If the service worker has the data, then display the cached
+       * data while the app fetches the latest data.
+       */
+      caches.match(url).then(function(response) {
+        if (response) {
+          response.json().then(function updateFromCache(json) {
+            var results = json.query.results;
+            results.key = key;
+            results.label = label;
+            results.created = json.query.created;
+            app.updateForecastCard(results);
+          });
+        }
+      });
+    }
     // Fetch the latest data.
     var request = new XMLHttpRequest();
     request.onreadystatechange = function() {
@@ -200,21 +216,12 @@
     });
   };
 
-
-
-
-
   // TODO add saveSelectedCities function here
-app.saveSelectedCities = function() {
+  // Save list of cities to localStorage.
+  app.saveSelectedCities = function() {
     var selectedCities = JSON.stringify(app.selectedCities);
     localStorage.selectedCities = selectedCities;
   };
-
-
-
-
-
-
 
   app.getIconClass = function(weatherCode) {
     // Weather codes: https://developer.yahoo.com/weather/documentation.html#codes
@@ -321,24 +328,20 @@ app.saveSelectedCities = function() {
     }
   };
   // TODO uncomment line below to test app with fake data
-  app.updateForecastCard(initialWeatherForecast);
+  // app.updateForecastCard(initialWeatherForecast);
 
-  // TODO add startup code here
-/************************************************************************
+  /************************************************************************
    *
    * Code required to start the app
    *
-   * NOTE:To simplify this codelab, we've used localStorage.
+   * NOTE: To simplify this codelab, we've used localStorage.
    *   localStorage is a synchronous API and has serious performance
-   *   implications.It should not be used in production applications!
+   *   implications. It should not be used in production applications!
    *   Instead, check out IDB (https://www.npmjs.com/package/idb) or
    *   SimpleDB (https://gist.github.com/inexorabletash/c8069c042b734519680c)
    ************************************************************************/
 
-// スタートアップ コードは、ローカル ストレージに保存されている都市があるかどうかを確認します。
-// ある場合は、ローカル ストレージ データを解析し、保存されている各都市の予報カードを表示します。
-// ない場合は、スタートアップ コードは架空の予報データを使用して、それをデフォルトの都市として保存します。
-
+  // TODO add startup code here
   app.selectedCities = localStorage.selectedCities;
   if (app.selectedCities) {
     app.selectedCities = JSON.parse(app.selectedCities);
@@ -347,7 +350,7 @@ app.saveSelectedCities = function() {
     });
   } else {
     /* The user is using the app for the first time, or the user has not
-     * saved any cities, so show the user some fake data.A real app in this
+     * saved any cities, so show the user some fake data. A real app in this
      * scenario could guess the user's location via IP lookup and then inject
      * that data into the page.
      */
@@ -358,18 +361,10 @@ app.saveSelectedCities = function() {
     app.saveSelectedCities();
   }
 
-
-
-
-
   // TODO add service worker code here
-if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator) {
     navigator.serviceWorker
              .register('./service-worker.js')
              .then(function() { console.log('Service Worker Registered'); });
   }
-
-
-
-  
 })();
